@@ -1,101 +1,237 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ComposableMap, Geographies, Geography } from "react-simple-maps";
+import { Copy, Check, Share2, Mail } from "lucide-react";
+
+const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+
+const encodeState = (obj: unknown) => { try { return encodeURIComponent(btoa(JSON.stringify(obj))); } catch { return ""; } };
+const decodeState = (s: string | null) => { if (!s) return null; try { return JSON.parse(atob(decodeURIComponent(s))); } catch { return null; } };
+
+const Title = ({ children }: { children: React.ReactNode }) => (
+  <h1 className="font-extrabold text-4xl leading-tight bg-clip-text text-transparent bg-[linear-gradient(135deg,#667eea,#764ba2)]">{children}</h1>
+);
+const Sub = ({ children }: { children: React.ReactNode }) => <p className="text-slate-600 text-lg mt-2">{children}</p>;
+
+function Button({ children, onClick, variant="primary", disabled=false }:{
+  children: React.ReactNode; onClick?: ()=>void; variant?: "primary"|"ghost"; disabled?: boolean;
+}) {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <button onClick={onClick} disabled={disabled}
+      className={`inline-flex items-center gap-2 px-5 py-3 rounded-full font-semibold shadow transition-all ${
+        variant==="primary" ? "text-white bg-[linear-gradient(135deg,#667eea,#764ba2)] hover:translate-y-[-1px] hover:shadow-lg"
+                             : "bg-white text-slate-800 border border-slate-200 hover:bg-slate-50"
+      } ${disabled?"opacity-50 cursor-not-allowed":""}`}>
+      {children}
+    </button>
+  );
+}
+const Dot = ({ active }: { active: boolean }) => <div className={`w-2.5 h-2.5 rounded-full ${active ? "bg-indigo-500 scale-110" : "bg-indigo-300/50"}`} />;
+const Stepper = ({ step }: { step: number }) => <div className="flex items-center gap-2">{[1,2,3,4,5].map(i => <Dot key={i} active={i<=step}/>)}</div>;
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+function BoardingPass({ name, destination, startDate, endDate }:{
+  name:string; destination:string; startDate:string; endDate:string;
+}) {
+  const randomPNR = (len=6)=>{const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let o="";for(let i=0;i<len;i++)o+=c[Math.floor(Math.random()*c.length)];return o;};
+  return (
+    <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-xl">
+      <div className="flex flex-col md:flex-row">
+        <div className="md:flex-1 bg-gradient-to-br from-indigo-500 to-purple-500 text-white p-6">
+          <div className="text-sm opacity-90">BOARDING PASS</div>
+          <div className="mt-2 text-slate-100/90">Passenger</div>
+          <div className="text-2xl font-extrabold">{name}</div>
+          <div className="mt-3 text-slate-100/90">Destination</div>
+          <div className="text-lg font-bold">{destination||"—"}</div>
+          <div className="mt-4 flex gap-8 text-sm">
+            <div><div className="opacity-80">Start</div><div className="font-semibold">{startDate||"—"}</div></div>
+            <div><div className="opacity-80">End</div><div className="font-semibold">{endDate||"—"}</div></div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        <div className="md:w-80 bg-white p-6 border-t md:border-t-0 md:border-l border-dashed">
+          <div className="text-indigo-900 font-extrabold">ADMIT ONE</div>
+          <div className="mt-3 text-slate-500 text-sm">Record Locator</div>
+          <div className="text-2xl font-extrabold tracking-wide">{randomPNR()}</div>
+          <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
+            <div><div className="text-slate-500">Seat</div><div className="font-semibold">—</div></div>
+            <div><div className="text-slate-500">Gate</div><div className="font-semibold">—</div></div>
+            <div><div className="text-slate-500">Board</div><div className="font-semibold">—</div></div>
+          </div>
+          <div className="mt-4 text-xs text-slate-500">Keepsake boarding pass for your surprise trip ❤️</div>
+        </div>
+      </div>
     </div>
   );
 }
+
+export default function Home() {
+  const [hoverName, setHoverName] = useState<string>("");
+  const [tooltipPos, setTooltipPos] = useState<{x:number;y:number}>({ x: 0, y: 0 });
+  const [step, setStep] = useState(1);
+  const [country, setCountry] = useState("");
+  const [code, setCode] = useState("");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [shareURL, setShareURL] = useState("");
+  const name = "Sonal";
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const data = decodeState(url.searchParams.get("data")) as any;
+    if (data?.country && data?.start && data?.end) {
+      setCountry(data.country); setCode(data.code||"");
+      setStart(data.start); setEnd(data.end);
+      setStep(5);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (country && start && end) {
+      const enc = encodeState({ country, code, start, end, name });
+      setShareURL(`${window.location.origin}${window.location.pathname}?data=${enc}`);
+    }
+  }, [country, code, start, end]);
+
+  const onCountryClick = (geo: any) => { setCountry(geo.properties.name); setCode(geo.id); setStep(4); };
+
+  const notifyServer = async () => {
+    try {
+      await fetch("/api/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, country, start, end, shareURL }),
+      });
+    } catch {}
+  };
+
+  const onFinalize = async () => { await notifyServer(); setStep(5); };
+
+  const copyLink = async () => { try { await navigator.clipboard.writeText(shareURL); setCopied(true); setTimeout(()=>setCopied(false),1500);} catch {} };
+
+  const header = (
+    <div className="flex items-center justify-between w-full max-w-5xl mx-auto px-5 pt-6 pb-3">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-xl bg-white/30 grid place-items-center text-white font-bold shadow">🎂</div>
+        <div className="text-white font-semibold text-lg drop-shadow">Mom’s Birthday</div>
+      </div>
+      <div className="flex items-center gap-2">{[1,2,3,4,5].map(i => <Dot key={i} active={i<=step}/>)}</div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-[linear-gradient(135deg,#667eea_0%,#764ba2_50%,#f093fb_100%)] pb-16">
+      {header}
+      <div className="w-full max-w-5xl mx-auto px-5">
+        <div className="relative bg-white/95 backdrop-blur-xl rounded-3xl border border-white/60 shadow-[0_30px_80px_rgba(0,0,0,0.18)] p-8 md:p-10 mt-2">
+          <div className="absolute left-0 right-0 top-0 h-1.5 bg-[linear-gradient(90deg,#667eea,#764ba2,#f093fb)] animate-[shimmer_6s_linear_infinite] rounded-t-3xl" />
+          <style>{`@keyframes shimmer{0%{background-position:0 0}100%{background-position:200% 0}}`}</style>
+
+          <AnimatePresence mode="wait">
+            {step===1 && (
+              <motion.div key="s1" initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-6}} transition={{duration:.35}}>
+                <Title>Happy Birthday Mom!!</Title>
+                <Sub>Let’s make this one unforgettable.</Sub>
+                <div className="mt-8"><Button onClick={()=>setStep(2)}>Next →</Button></div>
+              </motion.div>
+            )}
+            {step===2 && (
+              <motion.div key="s2" initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-6}} transition={{duration:.35}}>
+                <Title>I cannot wait to celebrate with you</Title>
+                <Sub>Here is your gift 🎁</Sub>
+                <div className="mt-8"><Button onClick={()=>setStep(3)}>Next →</Button></div>
+              </motion.div>
+            )}
+            {step===3 && (
+              <motion.div key="s3" initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-6}} transition={{duration:.35}}>
+                <Title>You have a ticket to anywhere in the world ✈️</Title>
+                <Sub>Click a country on the map to choose your destination.</Sub>
+                <div className="mt-6 rounded-2xl overflow-hidden border border-slate-200 shadow">
+                  <ComposableMap projection="geoNaturalEarth1" style={{ width: "100%", height: "520px" }}>
+                    <Geographies geography={GEO_URL}>
+                      {({ geographies }) => (
+                        <>
+                          {geographies.map((geo) => (
+                            <Geography
+                            key={geo.rsmKey}
+                            geography={geo}
+                            onClick={() => onCountryClick(geo)}
+                            onMouseEnter={(e) => {
+                              setHoverName(geo.properties.name);
+                              setTooltipPos({ x: e.clientX, y: e.clientY });
+                            }}
+                            onMouseMove={(e) => setTooltipPos({ x: e.clientX, y: e.clientY })}
+                            onMouseLeave={() => setHoverName("")}
+                            style={{
+                              default: { fill: "#e8ecff", outline: "none", stroke: "#ffffff", strokeWidth: 0.5 },
+                              hover:   { fill: "#c7d2fe", outline: "none" },
+                              pressed: { fill: "#a5b4fc", outline: "none" },
+                            }}
+                          />
+                          ))}
+                        </>
+                      )}
+                    </Geographies>
+                  </ComposableMap>
+                </div>
+              </motion.div>
+            )}
+            {step===4 && (
+              <motion.div key="s4" initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-6}} transition={{duration:.35}}>
+                <Title>Choose your dates</Title>
+                <Sub>Destination selected: <span className="font-semibold text-indigo-600">{country}</span></Sub>
+                <div className="mt-6 grid sm:grid-cols-2 gap-4">
+                  <div><label className="block text-sm text-slate-600 mb-1">Start date</label>
+                    <input type="date" className="w-full rounded-xl border border-slate-300 px-3 py-2" value={start} onChange={(e)=>setStart(e.target.value)} />
+                  </div>
+                  <div><label className="block text-sm text-slate-600 mb-1">End date</label>
+                    <input type="date" className="w-full rounded-xl border border-slate-300 px-3 py-2" value={end} onChange={(e)=>setEnd(e.target.value)} />
+                  </div>
+                </div>
+                <div className="mt-6 flex items-center gap-3">
+                  <Button variant="ghost" onClick={()=>setStep(3)}>← Back</Button>
+                  <Button onClick={onFinalize} disabled={!start || !end || !country}>Next →</Button>
+                </div>
+              </motion.div>
+            )}
+            {step===5 && (
+              <motion.div key="s5" initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-6}} transition={{duration:.35}}>
+                <Title>Your Boarding Pass</Title>
+                <Sub>Have the best birthday trip, Mom!</Sub>
+                <div className="mt-6"><BoardingPass name="Sonal" destination={country} startDate={start} endDate={end} /></div>
+                <div className="mt-6 grid sm:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100">
+                    <div className="text-sm text-slate-700">Share link with Mom</div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <input readOnly value={shareURL} className="flex-1 text-xs md:text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white" />
+                      <Button variant="ghost" onClick={()=>window.open(shareURL, "_blank")}><Share2 size={18}/> Open</Button>
+                      <Button variant="ghost" onClick={copyLink}>{copied ? (<><Check size={18}/> Copied</>) : (<><Copy size={18}/> Copy</>)}</Button>
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100">
+                    <div className="text-sm text-slate-700">Send results to me</div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <Button onClick={()=>window.open(`mailto:?subject=${encodeURIComponent("Birthday Trip Chosen: " + country)}&body=${encodeURIComponent(`Passenger: Sonal\nDestination: ${country}\nDates: ${start} → ${end}\nShare Link: ${shareURL}`)}`)}><Mail size={18}/> Mailto</Button>
+                      <span className="text-xs text-slate-500">Automatic email was already sent via API.</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-6"><Button variant="ghost" onClick={()=>setStep(1)}>Start Over</Button></div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+      {hoverName && (
+        <div
+          className="pointer-events-none fixed z-50 bg-white/95 text-slate-800 border border-slate-200 shadow px-2 py-1 rounded text-sm"
+          style={{ left: tooltipPos.x + 12, top: tooltipPos.y + 12 }}
+        >
+          {hoverName}
+        </div>
+      )}
+    </div>
+  );
+}
+   
