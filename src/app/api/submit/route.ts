@@ -1,20 +1,43 @@
 // src/app/api/submit/route.ts
-import { NextResponse } from "next/server";
-import { Resend } from "resend";
+import { NextRequest, NextResponse } from "next/server";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const TO_EMAIL = process.env.TO_EMAIL || "";
+type SubmitBody = {
+  name?: string;
+  country?: string;
+  start?: string;
+  end?: string;
+  shareURL?: string;
+};
 
-export async function POST(req: Request) {
+function isSubmitBody(x: unknown): x is SubmitBody {
+  if (typeof x !== "object" || x === null) return false;
+  const o = x as Record<string, unknown>;
+  const s = (v: unknown) => v === undefined || typeof v === "string";
+  return s(o.name) && s(o.country) && s(o.start) && s(o.end) && s(o.shareURL);
+}
+
+export async function POST(req: NextRequest) {
   try {
-    const { name, country, start, end, shareURL } = await req.json();
+    const raw: unknown = await req.json();
+    if (!isSubmitBody(raw)) {
+      return NextResponse.json({ ok: false, error: "Invalid request body" }, { status: 400 });
+    }
 
-    if (!TO_EMAIL) {
+    const { name = "Unknown", country = "Unknown", start = "?", end = "?", shareURL = "" } = raw;
+
+    const apiKey = process.env.RESEND_API_KEY;
+    const toEmail = process.env.TO_EMAIL;
+
+    if (!apiKey || !toEmail) {
       return NextResponse.json(
-        { ok: false, error: "Missing TO_EMAIL env var" },
+        { ok: false, error: "Missing RESEND_API_KEY or TO_EMAIL env var" },
         { status: 500 }
       );
     }
+
+    // Lazy import + construct only inside handler (prevents build-time crash)
+    const { Resend } = await import("resend");
+    const resend = new Resend(apiKey);
 
     const subject = `Birthday Trip Selected: ${country}`;
     const html = `
@@ -28,15 +51,16 @@ export async function POST(req: Request) {
     `;
 
     const { data, error } = await resend.emails.send({
-      from: "Trip Bot <onboarding@resend.dev>", // ok for testing
-      to: [TO_EMAIL],
+      from: "Trip Bot <onboarding@resend.dev>",
+      to: [toEmail],
       subject,
       html,
     });
 
-    if (error) return NextResponse.json({ ok: false, error }, { status: 500 });
+    if (error) return NextResponse.json({ ok: false, error: String(error) }, { status: 500 });
     return NextResponse.json({ ok: true, id: data?.id });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || "unknown" }, { status: 500 });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "unknown";
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
